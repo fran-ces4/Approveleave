@@ -22,9 +22,9 @@ Copilot Studio topic definitions and Adaptive Card samples for Workday Manager S
 
 ```
 ManagerScenarios/
-├── WorkdayManagerViewPendingRequests/
+├── WorkdayManagerViewInboxTasks/
 │   ├── topic.yaml
-│   ├── msdyn_HRWorkdayAbsenceManagerGetTimeOffRequests.xml
+│   ├── msdyn_HRWorkdayWorkflowManagerGetInboxTasks.xml
 │   └── README.md
 └── WorkdayManagerApproveTimeOff/
     ├── topic.yaml

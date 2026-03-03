@@ -1,28 +1,38 @@
-# Workday Manager: View Pending Time Off Requests
+# Workday Manager: View Inbox Tasks
 
 ## Overview
 
-This topic lets a manager view pending time-off requests from their direct reports. Data is fetched from Workday's Absence Management API and displayed as a markdown table by the AI.
+This topic lets a manager view all actionable tasks in their Workday inbox. Tasks include absence requests, benefits changes, organization assignments, Workday account edits, and any other business processes awaiting the manager's action.
 
 ## Trigger phrases
 
-- "Show me pending time off requests from my team"
-- "Who on my team has requested time off?"
-- "Review leave requests from my direct reports"
-- "Any pending PTO requests from my reports?"
+- "Show me my inbox tasks"
+- "What tasks are waiting for me?"
+- "Show my pending tasks"
+- "Any items in my Workday inbox?"
+- "What needs my attention?"
+- "Show tasks for John"
 
 ## Files
 
 | File | Description |
 |------|-------------|
 | `topic.yaml` | Copilot Studio topic definition with conversation flow |
-| `msdyn_HRWorkdayAbsenceManagerGetTimeOffRequests.xml` | Workday API template for fetching time-off requests |
+| `msdyn_HRWorkdayWorkflowManagerGetInboxTasks.xml` | Workday API template for fetching all inbox tasks |
 
 ## Workday APIs used
 
-| API | Purpose |
-|-----|---------|
-| `Get_Time_Off_Requests` | Retrieves pending time-off requests for the manager's direct reports |
+| API | Service | Purpose |
+|-----|---------|---------|
+| `Get_Inbox_Tasks` | Workflow | Retrieves all actionable inbox tasks for the manager |
+
+## Task types returned
+
+Based on the Workday inbox, this topic will display tasks such as:
+- **Absence requests** — time-off requests from direct reports
+- **Change benefits** — benefits enrollment or personal info changes
+- **Edit Workday account** — account modification requests
+- **Change organization assignments** — org structure changes
 
 ## Flow
 
@@ -36,7 +46,7 @@ This topic lets a manager view pending time-off requests from their direct repor
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Fetch pending requests from Workday                  │
+│         Fetch all inbox tasks from Workday                   │
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -44,7 +54,7 @@ This topic lets a manager view pending time-off requests from their direct repor
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│    Filter by employee name (if provided)                     │
+│    Filter by subject name (if provided)                      │
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -54,7 +64,14 @@ This topic lets a manager view pending time-off requests from their direct repor
 
 ## Dependencies
 
-- **msdyn_HRWorkdayAbsenceManagerGetTimeOffRequests** template config must be saved in Copilot Studio
+- **msdyn_HRWorkdayWorkflowManagerGetInboxTasks** template config must be saved in Copilot Studio
 - **WorkdayManagerCheck** system topic must be installed
 - **WorkdaySystemGetCommonExecution** system topic must be installed
-- Manager's org ID must be available via `Global.ESS_UserContext_ManagerOrganizationId`
+- Manager's employee ID must be available via `Global.ESS_UserContext_Employee_Id`
+
+## ⚠️ Admin verification required
+
+The `Get_Inbox_Tasks` API and its response XPaths may vary by Workday tenant. Your Workday admin should verify:
+1. The Workflow service is enabled
+2. The ISU has "View Inbox" permissions for the relevant business processes
+3. The response XPaths in the XML template match your tenant's actual response structure

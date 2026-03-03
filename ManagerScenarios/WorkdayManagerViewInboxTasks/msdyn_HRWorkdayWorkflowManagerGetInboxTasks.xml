@@ -1,0 +1,98 @@
+<workdayEntityConfigurationTemplate>
+    <!--
+        SCENARIO: Manager views all inbox tasks (not just time-off requests)
+        SERVICE:  Workflow (Get_Inbox_Tasks)
+
+        This returns all actionable tasks in the manager's Workday inbox,
+        including absence requests, benefits changes, org assignments, etc.
+
+        ⚠️ YOUR WORKDAY ADMIN SHOULD VERIFY:
+        - The Workflow service is enabled for your tenant
+        - The ISU has "View Inbox" permissions for the relevant business processes
+        - The response XPaths match your tenant's actual response structure
+    -->
+    <scenario name="ManagerGetInboxTasks">
+        <apiRequests>
+            <apiRequest>
+                <authType>User</authType>
+                <endpoint>
+                    <request>msdyn_HRWorkdayWorkflowManagerGetInboxTasks</request>
+                    <serviceName>Workday_Inbox</serviceName>
+                    <version>v42.0</version>
+                </endpoint>
+
+                <requestParameters>
+                    <parameter>
+                        <name>ManagerWorkerId</name>
+                        <value>{ManagerWorkerId}</value>
+                    </parameter>
+                </requestParameters>
+
+                <responseProperties>
+                    <!-- Business process name (e.g., "Absence Request: John Smith") -->
+                    <property>
+                        <key>TaskDescription</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Business_Process_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- Task type / business process type (e.g., "Absence Request", "Change Benefits") -->
+                    <property>
+                        <key>TaskType</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Business_Process_Type_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- The person the task relates to -->
+                    <property>
+                        <key>SubjectWorkerName</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Subject_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- Date the task was created -->
+                    <property>
+                        <key>CreatedDate</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Created_Date']/text()</extractPath>
+                    </property>
+
+                    <!-- Effective date of the business process -->
+                    <property>
+                        <key>EffectiveDate</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Effective_Date']/text()</extractPath>
+                    </property>
+
+                    <!-- Due date (if applicable) -->
+                    <property>
+                        <key>DueDate</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Due_Date']/text()</extractPath>
+                    </property>
+
+                    <!-- Task status -->
+                    <property>
+                        <key>TaskStatus</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Status_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- Business Process Instance ID (needed for approve/deny actions) -->
+                    <property>
+                        <key>BusinessProcessInstanceID</key>
+                        <extractPath>//*[local-name()='Inbox_Task_Data']/*[local-name()='Business_Process_Reference']/*[local-name()='ID'][@*[local-name()='type']='Business_Process_Instance_ID']/text()</extractPath>
+                    </property>
+                </responseProperties>
+            </apiRequest>
+        </apiRequests>
+    </scenario>
+
+    <requestTemplates>
+        <requestTemplate name="msdyn_HRWorkdayWorkflowManagerGetInboxTasks">
+            <bsvc:Get_Inbox_Tasks_Request xmlns:bsvc="urn:com.workday/bsvc" bsvc:version="v42.0">
+                <bsvc:Request_Criteria>
+                    <bsvc:Worker_Reference>
+                        <bsvc:ID bsvc:type="Employee_ID">{ManagerWorkerId}</bsvc:ID>
+                    </bsvc:Worker_Reference>
+                </bsvc:Request_Criteria>
+                <bsvc:Response_Group>
+                    <bsvc:Include_Business_Process_Details>true</bsvc:Include_Business_Process_Details>
+                </bsvc:Response_Group>
+            </bsvc:Get_Inbox_Tasks_Request>
+        </requestTemplate>
+    </requestTemplates>
+</workdayEntityConfigurationTemplate>

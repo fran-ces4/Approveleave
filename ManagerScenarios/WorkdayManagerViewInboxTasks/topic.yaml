@@ -1,33 +1,36 @@
 kind: AdaptiveDialog
 inputs:
   - kind: AutomaticTaskInput
-    propertyName: EmployeeName
-    description: The name of the specific direct report to filter time off requests for.
+    propertyName: SubjectName
+    description: The name of a person to filter inbox tasks for.
     entity: PersonNamePrebuiltEntity
     shouldPromptUser: false
 
 modelDescription: |-
-  You will respond to requests from a manager who wants to view, review, or check
-  pending time-off requests from their direct reports. The information is retrieved
-  from Workday and only contains results for the user's direct reports.
+  You will respond to requests from a manager who wants to view their Workday inbox tasks.
+  Inbox tasks include all actionable items such as absence requests, benefits changes,
+  organization assignments, Workday account edits, and other business processes.
+  The information is retrieved from the manager's Workday inbox.
 
-  This topic is for VIEWING requests only — it does not approve or deny them.
-  This data exclusively belongs to the manager's direct reports. Do not respond to questions about the manager's own time off.
+  This topic is for VIEWING tasks only — it does not approve or deny them.
+  This data exclusively belongs to the manager's inbox. Do not respond to questions about other people's inboxes.
 
   Example invalid requests:
-  "What are my own time off requests?"
-  "Show me company-wide leave requests"
+  "Show me someone else's inbox"
   "Approve time off for John"
+  "Submit a task"
 
   Example valid requests:
-  "Show me pending time off requests from my team"
-  "Who on my team has requested time off?"
-  "Review leave requests from my direct reports"
-  "Any pending PTO requests?"
+  "Show me my inbox tasks"
+  "What tasks are waiting for me?"
+  "Show my pending tasks"
+  "Any items in my Workday inbox?"
+  "What needs my attention?"
+  "Show tasks for John"
 
-  Your output **must** be a markdown table based on the data in {Topic.workdayResponseTable}.
-  Include columns: Employee Name, Time Off Type, Date, Hours, Status, and Reason.
-  If a specific employee name is provided, filter to show only that employee's requests.
+  Your output **must** be a markdown table based on the data in {Topic.inboxTasksTable}.
+  Include columns: Task, Subject, Type, Created, Effective Date, and Status.
+  If a specific person name is provided, filter to show only tasks related to that person.
 
 beginDialog:
   kind: OnRecognizedIntent
@@ -44,21 +47,13 @@ beginDialog:
       variable: Topic.WorkdayIconUrl
       value: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=
 
-    # ================================================================
-    # DATE CONFIGURATION
-    # ================================================================
-    - kind: SetVariable
-      id: set_as_of_effective_date
-      variable: Topic.AsOfEffectiveDate
-      value: =Today()
-
     - kind: BeginDialog
       id: check_manager_status
       displayName: Check manager status
       dialog: msdyn_copilotforemployeeselfservice.topic.WorkdayManagerCheck
 
     # ================================================================
-    # Initialize output variables so the static analyzer knows their types
+    # Initialize output variables
     # ================================================================
     - kind: SetVariable
       id: init_is_success
@@ -76,15 +71,15 @@ beginDialog:
       value: =""
 
     # ================================================================
-    # Fetch pending time-off requests from Workday
+    # Fetch inbox tasks from Workday
     # ================================================================
     - kind: BeginDialog
-      id: get_time_off_requests
-      displayName: Fetch pending time off requests from Workday
+      id: get_inbox_tasks
+      displayName: Fetch inbox tasks from Workday
       input:
         binding:
-          parameters: ="{""params"":[{""key"":""{ManagerOrgId}"",""value"":""" & Global.ESS_UserContext_ManagerOrganizationId & """},{""key"":""{As_Of_Effective_Date}"",""value"":""" & Text(Topic.AsOfEffectiveDate, "yyyy-MM-dd") & """}]}"
-          scenarioName: msdyn_HRWorkdayAbsenceManagerGetTimeOffRequests
+          parameters: ="{""params"":[{""key"":""{ManagerWorkerId}"",""value"":""" & Global.ESS_UserContext_Employee_Id & """}]}"
+          scenarioName: msdyn_HRWorkdayWorkflowManagerGetInboxTasks
       dialog: msdyn_copilotforemployeeselfservice.topic.WorkdaySystemGetCommonExecution
       output:
         binding:
@@ -121,7 +116,7 @@ beginDialog:
             - kind: SetVariable
               id: set_final_error_message
               variable: Topic.finalErrorMessage
-              value: =If(IsBlank(Topic.aiGeneratedError), "Something went wrong while retrieving time-off requests.", Topic.aiGeneratedError)
+              value: =If(IsBlank(Topic.aiGeneratedError), "Something went wrong while retrieving your inbox tasks.", Topic.aiGeneratedError)
 
             - kind: SendActivity
               id: friendly_error_message
@@ -143,7 +138,7 @@ beginDialog:
                   actions:
                     - kind: GotoAction
                       id: goto_fetch_on_retry
-                      actionId: get_time_off_requests
+                      actionId: get_inbox_tasks
               elseActions:
                 - kind: SendActivity
                   id: end_on_no_retry
@@ -162,32 +157,37 @@ beginDialog:
       valueType:
         kind: Record
         properties:
-          WorkerName:
+          TaskDescription:
             type:
               kind: Table
               properties:
                 Value: String
-          WorkerID:
+          TaskType:
             type:
               kind: Table
               properties:
                 Value: String
-          TimeOffType:
+          SubjectWorkerName:
             type:
               kind: Table
               properties:
                 Value: String
-          TimeOffDate:
+          CreatedDate:
             type:
               kind: Table
               properties:
                 Value: String
-          HoursRequested:
+          EffectiveDate:
             type:
               kind: Table
               properties:
                 Value: String
-          RequestStatus:
+          DueDate:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          TaskStatus:
             type:
               kind: Table
               properties:
@@ -197,103 +197,98 @@ beginDialog:
               kind: Table
               properties:
                 Value: String
-          Comment:
-            type:
-              kind: Table
-              properties:
-                Value: String
       value: =Topic.workdayResponse
 
     - kind: SetVariable
       id: merge_records
       displayName: Merge response records into display table
-      variable: Topic.workdayResponseTable
+      variable: Topic.inboxTasksTable
       value: |-
         =ForAll(
-            Sequence(CountRows(Topic.WorkdayResponseRecord.WorkerName)),
+            Sequence(CountRows(Topic.WorkdayResponseRecord.TaskDescription)),
             {
-                WorkerName: Last(FirstN(Topic.WorkdayResponseRecord.WorkerName, Value)).Value,
-                WorkerID: Last(FirstN(Topic.WorkdayResponseRecord.WorkerID, Value)).Value,
-                TimeOffType: Last(FirstN(Topic.WorkdayResponseRecord.TimeOffType, Value)).Value,
-                TimeOffDate: Last(FirstN(Topic.WorkdayResponseRecord.TimeOffDate, Value)).Value,
-                HoursRequested: Last(FirstN(Topic.WorkdayResponseRecord.HoursRequested, Value)).Value,
-                RequestStatus: Last(FirstN(Topic.WorkdayResponseRecord.RequestStatus, Value)).Value,
-                BusinessProcessInstanceID: Last(FirstN(Topic.WorkdayResponseRecord.BusinessProcessInstanceID, Value)).Value,
-                Comment: Last(FirstN(Topic.WorkdayResponseRecord.Comment, Value)).Value
+                TaskDescription: Last(FirstN(Topic.WorkdayResponseRecord.TaskDescription, Value)).Value,
+                TaskType: Last(FirstN(Topic.WorkdayResponseRecord.TaskType, Value)).Value,
+                SubjectWorkerName: Last(FirstN(Topic.WorkdayResponseRecord.SubjectWorkerName, Value)).Value,
+                CreatedDate: Last(FirstN(Topic.WorkdayResponseRecord.CreatedDate, Value)).Value,
+                EffectiveDate: Last(FirstN(Topic.WorkdayResponseRecord.EffectiveDate, Value)).Value,
+                DueDate: Last(FirstN(Topic.WorkdayResponseRecord.DueDate, Value)).Value,
+                TaskStatus: Last(FirstN(Topic.WorkdayResponseRecord.TaskStatus, Value)).Value,
+                BusinessProcessInstanceID: Last(FirstN(Topic.WorkdayResponseRecord.BusinessProcessInstanceID, Value)).Value
             }
         )
 
     # ================================================================
-    # Filter by employee name if provided
+    # Filter by subject name if provided
     # ================================================================
     - kind: ConditionGroup
-      id: check_employee_filter
+      id: check_subject_filter
       conditions:
         - id: filter_by_name
-          condition: =!IsBlank(Topic.EmployeeName)
+          condition: =!IsBlank(Topic.SubjectName)
           actions:
             - kind: SetVariable
               id: apply_name_filter
-              variable: Topic.workdayResponseTable
+              variable: Topic.inboxTasksTable
               value: |-
                 =Filter(
-                    Topic.workdayResponseTable,
-                    Topic.EmployeeName in WorkerName
+                    Topic.inboxTasksTable,
+                    Topic.SubjectName in SubjectWorkerName
                 )
 
             - kind: ConditionGroup
               id: check_filtered_results
               conditions:
                 - id: no_filtered_results
-                  condition: =IsEmpty(Topic.workdayResponseTable)
+                  condition: =IsEmpty(Topic.inboxTasksTable)
                   actions:
                     - kind: SendActivity
-                      id: no_results_for_employee
-                      activity: I couldn't find any pending time-off requests for **{Topic.EmployeeName}**. They may not have any pending requests, or they might not be one of your direct reports.
+                      id: no_results_for_subject
+                      activity: I couldn't find any inbox tasks related to **{Topic.SubjectName}**.
 
                     - kind: CancelAllDialogs
                       id: cancel_no_filtered
 
     # ================================================================
-    # Check if there are any requests at all
+    # Check if there are any tasks at all
     # ================================================================
     - kind: ConditionGroup
       id: check_any_results
       conditions:
         - id: no_results
-          condition: =IsEmpty(Topic.workdayResponseTable)
+          condition: =IsEmpty(Topic.inboxTasksTable)
           actions:
             - kind: SendActivity
-              id: no_pending_requests
-              activity: Great news! There are no pending time-off requests from your direct reports at this time.
+              id: no_tasks
+              activity: Your inbox is clear — there are no tasks waiting for your action right now.
 
             - kind: CancelAllDialogs
               id: cancel_no_results
 
     # ================================================================
-    # The AI will format Topic.workdayResponseTable as a markdown
+    # The AI will format Topic.inboxTasksTable as a markdown
     # table per the modelDescription instructions above.
     # ================================================================
 
 inputType:
   properties:
-    EmployeeName:
-      displayName: EmployeeName
-      description: The name of the specific direct report to filter for.
+    SubjectName:
+      displayName: SubjectName
+      description: The name of a person to filter inbox tasks for.
       type: String
 
 outputType:
   properties:
-    workdayResponseTable:
-      displayName: workdayResponseTable
+    inboxTasksTable:
+      displayName: inboxTasksTable
       type:
         kind: Table
         properties:
-          WorkerName: String
-          WorkerID: String
-          TimeOffType: String
-          TimeOffDate: String
-          HoursRequested: String
-          RequestStatus: String
+          TaskDescription: String
+          TaskType: String
+          SubjectWorkerName: String
+          CreatedDate: String
+          EffectiveDate: String
+          DueDate: String
+          TaskStatus: String
           BusinessProcessInstanceID: String
-          Comment: String
