@@ -17,7 +17,7 @@
                 <authType>User</authType>
                 <endpoint>
                     <request>msdyn_HRWorkdayWorkflowManagerGetInboxTasks</request>
-                    <serviceName>Workday_Inbox</serviceName>
+                    <serviceName>Staffing</serviceName>
                     <version>v42.0</version>
                 </endpoint>
 
