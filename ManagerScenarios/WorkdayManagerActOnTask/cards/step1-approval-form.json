@@ -5,7 +5,7 @@
   "body": [
     {
       "type": "TextBlock",
-      "text": "Approve or deny time off",
+      "text": "Act on inbox task",
       "weight": "Bolder",
       "size": "Medium",
       "wrap": true
@@ -19,43 +19,44 @@
     },
     {
       "type": "Input.ChoiceSet",
-      "id": "selectedRequest",
-      "label": "Select a request",
+      "id": "selectedTask",
+      "label": "Select a task",
       "style": "compact",
       "isRequired": true,
-      "errorMessage": "Please select a request.",
+      "errorMessage": "Please select a task.",
       "choices": [
         {
-          "title": "Jane Smith — Vacation on 2026-03-15 (8 hrs)",
+          "title": "Absence Request (Absence Request)",
           "value": "BP-001234"
         },
         {
-          "title": "John Doe — Sick Leave on 2026-03-20 (4 hrs)",
+          "title": "Benefits Change — Medical (Benefits Change)",
           "value": "BP-005678"
         },
         {
-          "title": "Alice Johnson — PTO on 2026-04-01 (8 hrs)",
+          "title": "Org Assignment — Finance Dept (Organization Assignment)",
           "value": "BP-009012"
         }
       ]
     },
     {
       "type": "Input.ChoiceSet",
-      "id": "approvalAction",
+      "id": "taskAction",
       "label": "Your decision",
       "style": "expanded",
       "isRequired": true,
-      "errorMessage": "Please select Approve or Deny.",
+      "errorMessage": "Please select an action.",
       "choices": [
         { "title": "Approve", "value": "Approve" },
-        { "title": "Deny", "value": "Deny" }
+        { "title": "Deny", "value": "Deny" },
+        { "title": "Send back", "value": "Send Back" }
       ]
     },
     {
       "type": "Input.Text",
-      "id": "approvalComment",
+      "id": "taskComment",
       "label": "Comment (optional)",
-      "placeholder": "Add a note for the employee...",
+      "placeholder": "Add a note...",
       "isMultiline": true
     },
     {

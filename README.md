@@ -26,9 +26,9 @@ ManagerScenarios/
 │   ├── topic.yaml
 │   ├── msdyn_HRWorkdayWorkflowManagerGetInboxTasks.xml
 │   └── README.md
-└── WorkdayManagerApproveTimeOff/
+└── WorkdayManagerActOnTask/
     ├── topic.yaml
-    ├── msdyn_HRWorkdayAbsenceManagerApproveTimeOff.xml
+    ├── msdyn_HRWorkdayBusinessProcessManagerActOnTask.xml
     ├── cards/
     │   ├── step1-approval-form.json
     │   └── step2-confirmation.json

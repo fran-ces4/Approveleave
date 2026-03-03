@@ -1,0 +1,30 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "✅ Task approved",
+      "weight": "Bolder",
+      "size": "Medium",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "The task has been approved.",
+      "wrap": true,
+      "spacing": "Small"
+    },
+    {
+      "type": "FactSet",
+      "facts": [
+        { "title": "Subject", "value": "Jane Smith" },
+        { "title": "Action", "value": "Approve" },
+        { "title": "Status", "value": "Approved" },
+        { "title": "Event ID", "value": "BP-001234" }
+      ]
+    }
+  ],
+  "actions": []
+}

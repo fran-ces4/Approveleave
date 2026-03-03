@@ -1,0 +1,83 @@
+<workdayEntityConfigurationTemplate>
+    <!--
+        SCENARIO: Manager acts on any inbox task (approve, deny, or send back)
+        SERVICE:  Staffing / Business Process (Approve_Or_Deny_Business_Process)
+
+        This API works for ANY business process type — absence requests,
+        benefits changes, org assignments, etc. The Business_Process_Instance_ID
+        comes from the "View Inbox Tasks" topic.
+
+        ⚠️ YOUR WORKDAY ADMIN SHOULD VERIFY:
+        - The correct SOAP operation name for your tenant
+        - The namespace and element names match your WSDL
+        - The valid Action values (typically: Approve, Deny, Send Back)
+        - The response XPaths match your tenant's response structure
+    -->
+    <scenario name="ManagerActOnTask">
+        <apiRequests>
+            <apiRequest>
+                <authType>User</authType>
+                <endpoint>
+                    <request>msdyn_HRWorkdayBusinessProcessManagerActOnTask</request>
+                    <serviceName>Staffing</serviceName>
+                    <version>v42.0</version>
+                </endpoint>
+
+                <requestParameters>
+                    <parameter>
+                        <name>Business_Process_Instance_ID</name>
+                        <value>{Business_Process_Instance_ID}</value>
+                    </parameter>
+                    <parameter>
+                        <name>Action</name>
+                        <value>{Action}</value>
+                    </parameter>
+                    <parameter>
+                        <name>Comment</name>
+                        <value>{Comment}</value>
+                    </parameter>
+                </requestParameters>
+
+                <responseProperties>
+                    <property>
+                        <key>EventID</key>
+                        <extractPath>//*[local-name()='Event_Reference']/*[local-name()='ID'][@*[local-name()='type']='Business_Process_Instance_ID']/text()</extractPath>
+                    </property>
+                    <property>
+                        <key>EventStatus</key>
+                        <extractPath>//*[local-name()='Event_Status']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+                    <property>
+                        <key>SubjectName</key>
+                        <extractPath>//*[local-name()='Worker_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+                </responseProperties>
+            </apiRequest>
+        </apiRequests>
+    </scenario>
+
+    <requestTemplates>
+        <!--
+            Action values: "Approve", "Deny", or "Send Back"
+            The Business_Process_Instance_ID comes from the View Inbox Tasks topic.
+
+            ⚠️ "Send Back" support may vary by tenant — verify with your admin.
+        -->
+        <requestTemplate name="msdyn_HRWorkdayBusinessProcessManagerActOnTask">
+            <bsvc:Approve_Or_Deny_Business_Process_Request xmlns:bsvc="urn:com.workday/bsvc" bsvc:version="v42.0">
+
+                <bsvc:Business_Process_Instance_Reference>
+                    <bsvc:ID bsvc:type="Business_Process_Instance_ID">{Business_Process_Instance_ID}</bsvc:ID>
+                </bsvc:Business_Process_Instance_Reference>
+
+                <bsvc:Business_Process_Action_Data>
+                    <bsvc:Action>{Action}</bsvc:Action>
+                    <bsvc:Comment_Data>
+                        <bsvc:Comment>{Comment}</bsvc:Comment>
+                    </bsvc:Comment_Data>
+                </bsvc:Business_Process_Action_Data>
+
+            </bsvc:Approve_Or_Deny_Business_Process_Request>
+        </requestTemplate>
+    </requestTemplates>
+</workdayEntityConfigurationTemplate>
