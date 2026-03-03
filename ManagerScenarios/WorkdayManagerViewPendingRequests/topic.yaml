@@ -1,0 +1,299 @@
+kind: AdaptiveDialog
+inputs:
+  - kind: AutomaticTaskInput
+    propertyName: EmployeeName
+    description: The name of the specific direct report to filter time off requests for.
+    entity: PersonNamePrebuiltEntity
+    shouldPromptUser: false
+
+modelDescription: |-
+  You will respond to requests from a manager who wants to view, review, or check
+  pending time-off requests from their direct reports. The information is retrieved
+  from Workday and only contains results for the user's direct reports.
+
+  This topic is for VIEWING requests only — it does not approve or deny them.
+  This data exclusively belongs to the manager's direct reports. Do not respond to questions about the manager's own time off.
+
+  Example invalid requests:
+  "What are my own time off requests?"
+  "Show me company-wide leave requests"
+  "Approve time off for John"
+
+  Example valid requests:
+  "Show me pending time off requests from my team"
+  "Who on my team has requested time off?"
+  "Review leave requests from my direct reports"
+  "Any pending PTO requests?"
+
+  Your output **must** be a markdown table based on the data in {Topic.workdayResponseTable}.
+  Include columns: Employee Name, Time Off Type, Date, Hours, Status, and Reason.
+  If a specific employee name is provided, filter to show only that employee's requests.
+
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent: {}
+  actions:
+    - kind: SetVariable
+      id: set_workday_url
+      variable: Topic.WorkdayUrl
+      value: https://impl.workday.com/<TENANT_NAME>/home.htmld
+
+    - kind: SetVariable
+      id: set_workday_icon_url
+      variable: Topic.WorkdayIconUrl
+      value: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=
+
+    # ================================================================
+    # DATE CONFIGURATION
+    # ================================================================
+    - kind: SetVariable
+      id: set_as_of_effective_date
+      variable: Topic.AsOfEffectiveDate
+      value: =Today()
+
+    - kind: BeginDialog
+      id: check_manager_status
+      displayName: Check manager status
+      dialog: msdyn_copilotforemployeeselfservice.topic.WorkdayManagerCheck
+
+    # ================================================================
+    # Initialize output variables so the static analyzer knows their types
+    # ================================================================
+    - kind: SetVariable
+      id: init_is_success
+      variable: Topic.isSuccess
+      value: =false
+
+    - kind: SetVariable
+      id: init_error_response
+      variable: Topic.errorResponse
+      value: =""
+
+    - kind: SetVariable
+      id: init_workday_response
+      variable: Topic.workdayResponse
+      value: =""
+
+    # ================================================================
+    # Fetch pending time-off requests from Workday
+    # ================================================================
+    - kind: BeginDialog
+      id: get_time_off_requests
+      displayName: Fetch pending time off requests from Workday
+      input:
+        binding:
+          parameters: ="{""params"":[{""key"":""{ManagerOrgId}"",""value"":""" & Global.ESS_UserContext_ManagerOrganizationId & """},{""key"":""{As_Of_Effective_Date}"",""value"":""" & Text(Topic.AsOfEffectiveDate, "yyyy-MM-dd") & """}]}"
+          scenarioName: msdyn_HRWorkdayAbsenceManagerGetTimeOffRequests
+      dialog: msdyn_copilotforemployeeselfservice.topic.WorkdaySystemGetCommonExecution
+      output:
+        binding:
+          errorResponse: Topic.errorResponse
+          isSuccess: Topic.isSuccess
+          workdayResponse: Topic.workdayResponse
+
+    # ================================================================
+    # Handle fetch errors
+    # ================================================================
+    - kind: ConditionGroup
+      id: check_success
+      conditions:
+        - id: request_failed
+          condition: =Topic.isSuccess = false
+          actions:
+            - kind: SetVariable
+              id: init_last_error
+              variable: Topic.lastErrorMessage
+              value: =Topic.errorResponse
+
+            - kind: SetVariable
+              id: parse_error_message
+              variable: Topic.friendlyErrorMessage
+              value: =IfError(Text(ParseJSON(Topic.lastErrorMessage).error.message), IfError(Text(ParseJSON(Topic.lastErrorMessage).message), Topic.lastErrorMessage))
+
+            - kind: AnswerQuestionWithAI
+              id: generate_friendly_error
+              autoSend: false
+              variable: Topic.aiGeneratedError
+              userInput: =Topic.friendlyErrorMessage
+              additionalInstructions: Reframe the following Workday error message in a friendly way for a manager. Keep it to ONE short sentence describing what went wrong. Do NOT include suggestions or next steps. Do NOT apologize. Do NOT use technical jargon.
+
+            - kind: SetVariable
+              id: set_final_error_message
+              variable: Topic.finalErrorMessage
+              value: =If(IsBlank(Topic.aiGeneratedError), "Something went wrong while retrieving time-off requests.", Topic.aiGeneratedError)
+
+            - kind: SendActivity
+              id: friendly_error_message
+              activity: "{Topic.finalErrorMessage}"
+
+            - kind: Question
+              id: ask_retry
+              interruptionPolicy:
+                allowInterruption: false
+              variable: Topic.retryChoice
+              prompt: Would you like to try again?
+              entity: BooleanPrebuiltEntity
+
+            - kind: ConditionGroup
+              id: handle_retry_choice
+              conditions:
+                - id: user_wants_retry
+                  condition: =Topic.retryChoice = true
+                  actions:
+                    - kind: GotoAction
+                      id: goto_fetch_on_retry
+                      actionId: get_time_off_requests
+              elseActions:
+                - kind: SendActivity
+                  id: end_on_no_retry
+                  activity: No problem! Let me know if you need anything else.
+
+                - kind: CancelAllDialogs
+                  id: cancel_on_no_retry
+
+    # ================================================================
+    # Parse and merge the Workday response
+    # ================================================================
+    - kind: ParseValue
+      id: parse_response
+      displayName: Parse Workday response into table
+      variable: Topic.WorkdayResponseRecord
+      valueType:
+        kind: Record
+        properties:
+          WorkerName:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          WorkerID:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          TimeOffType:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          TimeOffDate:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          HoursRequested:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          RequestStatus:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          BusinessProcessInstanceID:
+            type:
+              kind: Table
+              properties:
+                Value: String
+          Comment:
+            type:
+              kind: Table
+              properties:
+                Value: String
+      value: =Topic.workdayResponse
+
+    - kind: SetVariable
+      id: merge_records
+      displayName: Merge response records into display table
+      variable: Topic.workdayResponseTable
+      value: |-
+        =ForAll(
+            Sequence(CountRows(Topic.WorkdayResponseRecord.WorkerName)),
+            {
+                WorkerName: Last(FirstN(Topic.WorkdayResponseRecord.WorkerName, Value)).Value,
+                WorkerID: Last(FirstN(Topic.WorkdayResponseRecord.WorkerID, Value)).Value,
+                TimeOffType: Last(FirstN(Topic.WorkdayResponseRecord.TimeOffType, Value)).Value,
+                TimeOffDate: Last(FirstN(Topic.WorkdayResponseRecord.TimeOffDate, Value)).Value,
+                HoursRequested: Last(FirstN(Topic.WorkdayResponseRecord.HoursRequested, Value)).Value,
+                RequestStatus: Last(FirstN(Topic.WorkdayResponseRecord.RequestStatus, Value)).Value,
+                BusinessProcessInstanceID: Last(FirstN(Topic.WorkdayResponseRecord.BusinessProcessInstanceID, Value)).Value,
+                Comment: Last(FirstN(Topic.WorkdayResponseRecord.Comment, Value)).Value
+            }
+        )
+
+    # ================================================================
+    # Filter by employee name if provided
+    # ================================================================
+    - kind: ConditionGroup
+      id: check_employee_filter
+      conditions:
+        - id: filter_by_name
+          condition: =!IsBlank(Topic.EmployeeName)
+          actions:
+            - kind: SetVariable
+              id: apply_name_filter
+              variable: Topic.workdayResponseTable
+              value: |-
+                =Filter(
+                    Topic.workdayResponseTable,
+                    Topic.EmployeeName in WorkerName
+                )
+
+            - kind: ConditionGroup
+              id: check_filtered_results
+              conditions:
+                - id: no_filtered_results
+                  condition: =IsEmpty(Topic.workdayResponseTable)
+                  actions:
+                    - kind: SendActivity
+                      id: no_results_for_employee
+                      activity: I couldn't find any pending time-off requests for **{Topic.EmployeeName}**. They may not have any pending requests, or they might not be one of your direct reports.
+
+                    - kind: CancelAllDialogs
+                      id: cancel_no_filtered
+
+    # ================================================================
+    # Check if there are any requests at all
+    # ================================================================
+    - kind: ConditionGroup
+      id: check_any_results
+      conditions:
+        - id: no_results
+          condition: =IsEmpty(Topic.workdayResponseTable)
+          actions:
+            - kind: SendActivity
+              id: no_pending_requests
+              activity: Great news! There are no pending time-off requests from your direct reports at this time.
+
+            - kind: CancelAllDialogs
+              id: cancel_no_results
+
+    # ================================================================
+    # The AI will format Topic.workdayResponseTable as a markdown
+    # table per the modelDescription instructions above.
+    # ================================================================
+
+inputType:
+  properties:
+    EmployeeName:
+      displayName: EmployeeName
+      description: The name of the specific direct report to filter for.
+      type: String
+
+outputType:
+  properties:
+    workdayResponseTable:
+      displayName: workdayResponseTable
+      type:
+        kind: Table
+        properties:
+          WorkerName: String
+          WorkerID: String
+          TimeOffType: String
+          TimeOffDate: String
+          HoursRequested: String
+          RequestStatus: String
+          BusinessProcessInstanceID: String
+          Comment: String

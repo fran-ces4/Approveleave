@@ -1,0 +1,132 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Approve or deny time off",
+      "weight": "Bolder",
+      "size": "Medium",
+      "wrap": true
+    },
+    {
+      "type": "TextBlock",
+      "text": "Fields marked with * are required.",
+      "wrap": true,
+      "spacing": "Medium",
+      "size": "Small"
+    },
+    {
+      "type": "Input.ChoiceSet",
+      "id": "selectedRequest",
+      "label": "Select a request",
+      "style": "compact",
+      "isRequired": true,
+      "errorMessage": "Please select a request.",
+      "choices": [
+        {
+          "title": "Jane Smith — Vacation on 2026-03-15 (8 hrs)",
+          "value": "BP-001234"
+        },
+        {
+          "title": "John Doe — Sick Leave on 2026-03-20 (4 hrs)",
+          "value": "BP-005678"
+        },
+        {
+          "title": "Alice Johnson — PTO on 2026-04-01 (8 hrs)",
+          "value": "BP-009012"
+        }
+      ]
+    },
+    {
+      "type": "Input.ChoiceSet",
+      "id": "approvalAction",
+      "label": "Your decision",
+      "style": "expanded",
+      "isRequired": true,
+      "errorMessage": "Please select Approve or Deny.",
+      "choices": [
+        { "title": "Approve", "value": "Approve" },
+        { "title": "Deny", "value": "Deny" }
+      ]
+    },
+    {
+      "type": "Input.Text",
+      "id": "approvalComment",
+      "label": "Comment (optional)",
+      "placeholder": "Add a note for the employee...",
+      "isMultiline": true
+    },
+    {
+      "type": "ColumnSet",
+      "spacing": "Medium",
+      "columns": [
+        {
+          "type": "Column",
+          "width": "auto",
+          "items": [
+            {
+              "type": "ActionSet",
+              "actions": [
+                { "type": "Action.Submit", "title": "Submit", "id": "Submit" },
+                { "type": "Action.Submit", "title": "Cancel", "id": "Cancel" }
+              ]
+            }
+          ],
+          "verticalContentAlignment": "Center"
+        },
+        {
+          "type": "Column",
+          "width": "stretch",
+          "items": [],
+          "verticalContentAlignment": "Center"
+        },
+        {
+          "type": "Column",
+          "width": "auto",
+          "items": [
+            {
+              "type": "ColumnSet",
+              "spacing": "None",
+              "columns": [
+                {
+                  "type": "Column",
+                  "width": "auto",
+                  "items": [
+                    {
+                      "type": "Image",
+                      "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+                      "style": "RoundedCorners",
+                      "size": "Small",
+                      "height": "20px",
+                      "width": "20px"
+                    }
+                  ],
+                  "verticalContentAlignment": "Center"
+                },
+                {
+                  "type": "Column",
+                  "width": "auto",
+                  "items": [
+                    {
+                      "type": "TextBlock",
+                      "text": "Workday",
+                      "size": "Small",
+                      "color": "#242424",
+                      "weight": "Bolder"
+                    }
+                  ],
+                  "verticalContentAlignment": "Center",
+                  "spacing": "Small"
+                }
+              ]
+            }
+          ],
+          "verticalContentAlignment": "Center"
+        }
+      ]
+    }
+  ],
+  "actions": []
+}

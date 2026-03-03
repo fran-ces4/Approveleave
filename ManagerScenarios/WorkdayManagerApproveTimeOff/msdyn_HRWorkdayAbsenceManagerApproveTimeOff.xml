@@ -1,0 +1,124 @@
+<workdayEntityConfigurationTemplate>
+    <!--
+        SCENARIO: Manager approves or denies a time-off request from a direct report
+        SERVICE:  Staffing / Business Process (Approve_Or_Deny_Business_Process)
+
+        HOW THIS WORKS:
+        - The manager provides the Business Process Instance ID of the request
+          (obtained from the "View Pending Time Off Requests" topic)
+        - The agent sends an approval or denial action to Workday
+        - Workday processes the decision and returns a confirmation
+
+        ⚠️ IMPORTANT: The exact API operation name and SOAP structure may vary
+        depending on your Workday tenant version and configuration.
+        Your Workday admin MUST verify:
+          1. The correct SOAP operation name
+          2. The namespace and element names
+          3. The response structure / XPaths
+    -->
+    <scenario name="ManagerApproveTimeOffRequest">
+        <apiRequests>
+            <apiRequest>
+                <!--
+                    authType "User" means the request is made on behalf of
+                    the currently logged-in manager (not a system account).
+                -->
+                <authType>User</authType>
+                <endpoint>
+                    <!--
+                        This "request" value MUST match the requestTemplate "name" below.
+                        This is also the value you paste into the "Unique Name" field
+                        in Copilot Studio.
+                    -->
+                    <request>msdyn_HRWorkdayAbsenceManagerApproveTimeOff</request>
+                    <serviceName>Staffing</serviceName>
+                    <version>v42.0</version>
+                </endpoint>
+
+                <requestParameters>
+                    <parameter>
+                        <name>Business_Process_Instance_ID</name>
+                        <value>{Business_Process_Instance_ID}</value>
+                    </parameter>
+                    <parameter>
+                        <name>Action</name>
+                        <value>{Action}</value>
+                    </parameter>
+                    <parameter>
+                        <name>Comment</name>
+                        <value>{Comment}</value>
+                    </parameter>
+                </requestParameters>
+
+                <!--
+                    RESPONSE PROPERTIES:
+                    These extract confirmation data from Workday's response
+                    after the approval/denial is processed.
+                -->
+                <responseProperties>
+                    <!-- The event ID confirms the action was recorded -->
+                    <property>
+                        <key>EventID</key>
+                        <extractPath>//*[local-name()='Event_Reference']/*[local-name()='ID'][@*[local-name()='type']='Business_Process_Instance_ID']/text()</extractPath>
+                    </property>
+
+                    <!-- The overall status after the action (e.g., "Approved", "Denied") -->
+                    <property>
+                        <key>EventStatus</key>
+                        <extractPath>//*[local-name()='Event_Status']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- The worker name the decision applies to -->
+                    <property>
+                        <key>WorkerName</key>
+                        <extractPath>//*[local-name()='Worker_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+                </responseProperties>
+            </apiRequest>
+        </apiRequests>
+    </scenario>
+
+    <requestTemplates>
+        <!--
+            This is the actual SOAP request sent to Workday.
+
+            Values in {curly braces} are placeholders — the agent fills these in
+            at runtime based on what the manager selects in the Adaptive Card.
+
+            ⚠️ YOUR WORKDAY ADMIN SHOULD VERIFY:
+            - The operation may be named differently in your tenant
+              (e.g., "Put_Business_Process_Instance_Approval" or similar)
+            - The namespace URI must match your Workday version
+            - The element structure must match your WSDL
+        -->
+        <requestTemplate name="msdyn_HRWorkdayAbsenceManagerApproveTimeOff">
+            <bsvc:Approve_Or_Deny_Business_Process_Request xmlns:bsvc="urn:com.workday/bsvc" bsvc:version="v42.0">
+
+                <!--
+                    This references the specific time-off request to approve/deny.
+                    The Business_Process_Instance_ID comes from the "View Pending
+                    Requests" topic (it's captured in the response there).
+                -->
+                <bsvc:Business_Process_Instance_Reference>
+                    <bsvc:ID bsvc:type="Business_Process_Instance_ID">{Business_Process_Instance_ID}</bsvc:ID>
+                </bsvc:Business_Process_Instance_Reference>
+
+                <bsvc:Business_Process_Action_Data>
+                    <!--
+                        Action can be "Approve" or "Deny".
+                        This is selected by the manager via the Adaptive Card.
+                    -->
+                    <bsvc:Action>{Action}</bsvc:Action>
+
+                    <!--
+                        Optional comment from the manager explaining their decision.
+                    -->
+                    <bsvc:Comment_Data>
+                        <bsvc:Comment>{Comment}</bsvc:Comment>
+                    </bsvc:Comment_Data>
+                </bsvc:Business_Process_Action_Data>
+
+            </bsvc:Approve_Or_Deny_Business_Process_Request>
+        </requestTemplate>
+    </requestTemplates>
+</workdayEntityConfigurationTemplate>

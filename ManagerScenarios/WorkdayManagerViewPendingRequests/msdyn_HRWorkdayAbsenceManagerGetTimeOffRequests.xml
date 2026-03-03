@@ -1,0 +1,132 @@
+<workdayEntityConfigurationTemplate>
+    <!--
+        SCENARIO: Manager views pending time-off requests from direct reports
+        SERVICE:  Absence_Management (Get_Time_Off_Requests)
+        
+        HOW THIS WORKS:
+        - The agent sends the manager's Supervisory Org ID to Workday
+        - Workday returns all pending time-off requests for that org's workers
+        - The response properties extract key fields for display
+    -->
+    <scenario name="ManagerGetDirectReportsTimeOffRequests">
+        <apiRequests>
+            <apiRequest>
+                <authType>User</authType>
+                <endpoint>
+                    <!-- 
+                        This "request" value MUST match the requestTemplate "name" below.
+                        This is also the value you'll paste into the "Unique Name" field 
+                        in Copilot Studio.
+                    -->
+                    <request>msdyn_HRWorkdayAbsenceManagerGetTimeOffRequests</request>
+                    <serviceName>Absence_Management</serviceName>
+                    <version>v42.0</version>
+                </endpoint>
+
+                <requestParameters>
+                    <parameter>
+                        <name>ManagerOrgId</name>
+                        <value>{ManagerOrgId}</value>
+                    </parameter>
+                    <parameter>
+                        <name>As_Of_Effective_Date</name>
+                        <value>{As_Of_Effective_Date}</value>
+                    </parameter>
+                </requestParameters>
+
+                <!--
+                    RESPONSE PROPERTIES:
+                    These XPaths tell the agent which pieces of data to pull
+                    out of Workday's XML response.
+                    
+                    ⚠️ IMPORTANT: These XPaths are based on the standard Workday 
+                    Absence_Management WSDL. Your Workday admin should verify they 
+                    match your tenant's actual response structure.
+                -->
+                <responseProperties>
+                    <!-- Employee name who requested the time off -->
+                    <property>
+                        <key>WorkerName</key>
+                        <extractPath>//*[local-name()='Time_Off_Request_Data']/*[local-name()='Worker_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- Worker ID for reference -->
+                    <property>
+                        <key>WorkerID</key>
+                        <extractPath>//*[local-name()='Time_Off_Request_Data']/*[local-name()='Worker_Reference']/*[local-name()='ID'][@*[local-name()='type']='Employee_ID']/text()</extractPath>
+                    </property>
+
+                    <!-- Type of time off (e.g., Vacation, Sick) -->
+                    <property>
+                        <key>TimeOffType</key>
+                        <extractPath>//*[local-name()='Time_Off_Entry_Data']/*[local-name()='Time_Off_Type_Reference']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- Date of the time off -->
+                    <property>
+                        <key>TimeOffDate</key>
+                        <extractPath>//*[local-name()='Time_Off_Entry_Data']/*[local-name()='Date']/text()</extractPath>
+                    </property>
+
+                    <!-- Hours requested -->
+                    <property>
+                        <key>HoursRequested</key>
+                        <extractPath>//*[local-name()='Time_Off_Entry_Data']/*[local-name()='Requested']/text()</extractPath>
+                    </property>
+
+                    <!-- Status of the request -->
+                    <property>
+                        <key>RequestStatus</key>
+                        <extractPath>//*[local-name()='Time_Off_Request_Data']/*[local-name()='Request_Status']/@*[local-name()='Descriptor']</extractPath>
+                    </property>
+
+                    <!-- 
+                        Business Process Instance ID - CRITICAL for the approval step.
+                        This ID is needed later when the manager approves/denies a request.
+                    -->
+                    <property>
+                        <key>BusinessProcessInstanceID</key>
+                        <extractPath>//*[local-name()='Time_Off_Request_Data']/*[local-name()='Business_Process_Instance_Reference']/*[local-name()='ID'][@*[local-name()='type']='Business_Process_Instance_ID']/text()</extractPath>
+                    </property>
+
+                    <!-- Comment/reason provided by the employee -->
+                    <property>
+                        <key>Comment</key>
+                        <extractPath>//*[local-name()='Time_Off_Request_Data']/*[local-name()='Comment_Data']/*[local-name()='Comment']/text()</extractPath>
+                    </property>
+                </responseProperties>
+            </apiRequest>
+        </apiRequests>
+    </scenario>
+
+    <requestTemplates>
+        <!--
+            This is the actual SOAP request that gets sent to Workday.
+            
+            Values in {curly braces} are placeholders — the agent fills these in
+            at runtime using the manager's context (their org ID, today's date, etc.)
+        -->
+        <requestTemplate name="msdyn_HRWorkdayAbsenceManagerGetTimeOffRequests">
+            <bsvc:Get_Time_Off_Requests xmlns:bsvc="urn:com.workday/bsvc" bsvc:version="v42.0">
+                <bsvc:Request_Criteria>
+                    <!--
+                        Filter by the manager's supervisory organization.
+                        This ensures we only get requests from their direct reports.
+                    -->
+                    <bsvc:Organization_Reference bsvc:Descriptor="Supervisory_Organization">
+                        <bsvc:ID bsvc:type="Organization_Reference_ID">{ManagerOrgId}</bsvc:ID>
+                    </bsvc:Organization_Reference>
+                </bsvc:Request_Criteria>
+
+                <bsvc:Response_Filter>
+                    <bsvc:As_Of_Effective_Date>{As_Of_Effective_Date}</bsvc:As_Of_Effective_Date>
+                </bsvc:Response_Filter>
+
+                <bsvc:Response_Group>
+                    <bsvc:Include_Time_Off_Entry_Data>true</bsvc:Include_Time_Off_Entry_Data>
+                    <bsvc:Include_Time_Off_Request_Status>true</bsvc:Include_Time_Off_Request_Status>
+                </bsvc:Response_Group>
+            </bsvc:Get_Time_Off_Requests>
+        </requestTemplate>
+    </requestTemplates>
+</workdayEntityConfigurationTemplate>
