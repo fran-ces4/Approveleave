@@ -7,30 +7,12 @@ inputs:
     shouldPromptUser: false
 
 modelDescription: |-
-  You will respond to requests from a manager who wants to view their Workday inbox tasks.
-  Inbox tasks include all actionable items such as absence requests, benefits changes,
-  organization assignments, Workday account edits, and other business processes.
-  The information is retrieved from the manager's Workday inbox.
+  Respond to a manager viewing their Workday inbox tasks. Tasks include absence requests, benefits changes, org assignments, and other business processes. This topic is for VIEWING only — not approving or denying. This data belongs to the manager's inbox only.
 
-  This topic is for VIEWING tasks only — it does not approve or deny them.
-  This data exclusively belongs to the manager's inbox. Do not respond to questions about other people's inboxes.
+  Invalid: "Approve time off", "Submit a task", "Show someone else's inbox"
+  Valid: "Show my inbox tasks", "What needs my attention?", "Show tasks for John"
 
-  Example invalid requests:
-  "Show me someone else's inbox"
-  "Approve time off for John"
-  "Submit a task"
-
-  Example valid requests:
-  "Show me my inbox tasks"
-  "What tasks are waiting for me?"
-  "Show my pending tasks"
-  "Any items in my Workday inbox?"
-  "What needs my attention?"
-  "Show tasks for John"
-
-  Your output **must** be a markdown table based on the data in {Topic.inboxTasksTable}.
-  Include columns: Task, Subject, Type, Created, Effective Date, and Status.
-  If a specific person name is provided, filter to show only tasks related to that person.
+  Output a markdown table from {Topic.inboxTasksTable} with columns: Task, Subject, Type, Created, Effective Date, Status. Filter by person name if provided.
 
 beginDialog:
   kind: OnRecognizedIntent
